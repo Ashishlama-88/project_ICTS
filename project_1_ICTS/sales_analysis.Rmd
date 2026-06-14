@@ -1,0 +1,221 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+install.packages("tidyr")
+install.packages("tidyverse")
+```
+
+```{r message=FALSE, warning=FALSE, error=TRUE}
+library(DBI)
+library(RSQLite)
+library(dplyr)      
+library(lubridate)   
+library(ggplot2)    
+library(yardstick)  
+library(dplyr)
+library(readr)
+library(tidyr)
+library(tidyverse)
+```
+
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file). 
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+
+
+```{r error=TRUE}
+con <- dbConnect(RSQLite::SQLite(),
+                 "/Users/AshishLama/Desktop/project1_raw_data.db") 
+
+#dbListFields(con, "station")
+
+
+
+data = dbGetQuery(con, "PRAGMA table_info(weather)")
+```
+
+```{r error=TRUE}
+df <- dbGetQuery(con, "
+SELECT t.date, t.store_nbr, t.item_nbr, t.units,
+       w.tavg, w.preciptotal, w.codesum, w.dewpoint, w.wetbulb,  w.heat, w.cool
+FROM train t
+JOIN key k ON t.store_nbr = k.store_nbr
+JOIN weather w ON k.station_nbr = w.station_nbr
+               AND t.date = w.date
+")
+```
+
+
+view the Dataframe
+
+```{r error= TRUE}
+df
+View(df)
+```
+
+closing the connection
+
+```{r error=TRUE}
+dbDisconnect(con)
+```
+
+```{r error=TRUE}
+summary(df)
+```
+
+
+
+
+
+```{r}
+names(df)
+```
+
+```{r}
+sum(is.na(df$tavg))  # Count NA values
+sum(df$tavg == " ") 
+```
+
+
+```{r}
+df_clean <- df %>%
+  mutate(
+    # Convert empty strings to NA
+    tavg = na_if(tavg, 0),
+    # Calculate median (store it)
+    median_tavg = median(tavg, na.rm = TRUE),
+    # Replace NAs with median
+    tavg = ifelse(is.na(tavg), median_tavg, tavg)
+  ) %>%
+  select(-median_tavg)  # Remove helper column
+
+# Check results
+summary(df_clean$tavg)
+```
+
+```{r}
+df_clean
+```
+
+```{r}
+Sys.Date()
+df_clean$date <- as.Date(df_clean$date, format = "%Y-%m-%d")
+
+```
+
+
+```{r}
+df_clean$day <- weekdays(df_clean$date)
+df_clean$month = as.integer(format(df_clean$date, "%m"))
+df_clean$year  = as.integer(format(df_clean$date, "%Y"))
+```
+
+
+
+
+
+```{r}
+df_clean
+```
+
+```{r}
+df_clean <- df_clean %>%
+  mutate(codesum = ifelse(codesum == "" | codesum == " ", "Moderate", codesum))
+
+# Check the results
+#table(df_clean$codesum)
+```
+
+```{r}
+df_clean
+```
+
+```{r}
+print(nrow(df_clean))
+```
+
+```{r}
+sapply(df_clean, class)
+```
+
+
+
+
+```{r}
+june <- df_clean %>% filter(month == 6)
+june
+```
+
+
+```{r}
+# Summarise total units by month
+monthly_sales <- df_clean %>%
+  group_by(month) %>%
+  summarise(total_units = sum(units, na.rm = TRUE), .groups = "drop") %>%
+  mutate(
+    month_name = month.abb[month],
+  )
+
+# Print the comparison
+monthly_sales
+```
+
+```{r}
+library(ggplot2)
+
+ggplot(monthly_sales, aes(x = reorder(month_name, month), 
+                           y = total_units)) + geom_col(fill = "#378ADD") +
+  geom_text(aes(label = scales::comma(total_units)), 
+            vjust = -0.5, size = 3.2)  +
+  scale_y_continuous(labels = scales::comma) +
+  labs(
+    title    = "Total units sold by month",
+    x        = NULL,
+    y        = "Total units sold",
+    fill     = NULL
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    panel.grid.major.x = element_blank(),
+    legend.position    = "top"
+  )
+```
+
+
+```{r}
+df_clean <- df_clean %>%
+  mutate(
+    is_clear  = if_else(str_detect(codesum, "Moderate"), 1L, 0L),
+    is_rainy  = if_else(str_detect(codesum, "RA|DZ"), 1L, 0L),
+    is_snowy  = if_else(str_detect(codesum, "SN"), 1L, 0L),
+    is_foggy  = if_else(str_detect(codesum, "FG|BR"), 1L, 0L),
+    is_stormy = if_else(str_detect(codesum, "TS"), 1L, 0L)
+  )
+```
+
+```{r}
+df_clean
+```
+
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+
+
+
+
+
+
+
