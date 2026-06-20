@@ -21,13 +21,11 @@ library(tidyr)
 library(tidyverse)
 ```
 
-
 Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
 
-When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file). 
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file).
 
 The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
-
 
 ```{r error=TRUE}
 con <- dbConnect(RSQLite::SQLite(),
@@ -51,7 +49,6 @@ JOIN weather w ON k.station_nbr = w.station_nbr
 ")
 ```
 
-
 view the Dataframe
 
 ```{r error= TRUE}
@@ -69,10 +66,6 @@ dbDisconnect(con)
 summary(df)
 ```
 
-
-
-
-
 ```{r}
 names(df)
 ```
@@ -81,7 +74,6 @@ names(df)
 sum(is.na(df$tavg))  # Count NA values
 sum(df$tavg == " ") 
 ```
-
 
 ```{r}
 df_clean <- df %>%
@@ -109,16 +101,10 @@ df_clean$date <- as.Date(df_clean$date, format = "%Y-%m-%d")
 
 ```
 
-
 ```{r}
 df_clean$day <- weekdays(df_clean$date)
 df_clean$month = as.integer(format(df_clean$date, "%m"))
-df_clean$year  = as.integer(format(df_clean$date, "%Y"))
 ```
-
-
-
-
 
 ```{r}
 df_clean
@@ -137,6 +123,10 @@ df_clean
 ```
 
 ```{r}
+#write.csv(df_clean, "data.csv", row.names = FALSE)
+```
+
+```{r}
 print(nrow(df_clean))
 ```
 
@@ -144,14 +134,10 @@ print(nrow(df_clean))
 sapply(df_clean, class)
 ```
 
-
-
-
 ```{r}
 june <- df_clean %>% filter(month == 6)
 june
 ```
-
 
 ```{r}
 # Summarise total units by month
@@ -187,7 +173,6 @@ ggplot(monthly_sales, aes(x = reorder(month_name, month),
   )
 ```
 
-
 ```{r}
 df_clean <- df_clean %>%
   mutate(
@@ -203,11 +188,195 @@ df_clean <- df_clean %>%
 df_clean
 ```
 
+```{r}
+# Step 1 — Understand the distribution first
+df_clean %>%
+  summarise(
+    min      = min(units, na.rm = TRUE),
+    max      = max(units, na.rm = TRUE),
+    mean     = round(mean(units, na.rm = TRUE), 3),
+    median   = median(units, na.rm = TRUE),
+    pct_zero = round(mean(units == 0) * 100, 1),
+    p95      = quantile(units, 0.95, na.rm = TRUE),
+    p99      = quantile(units, 0.99, na.rm = TRUE),
+    p99_5    = quantile(units, 0.995, na.rm = TRUE)
+  )
+```
+
+```{r}
+nonzero_units <- df_clean$units[df_clean$units > 0]
+
+nonzero_summary <- tibble(
+  n_nonzero = length(nonzero_units),
+  min       = min(nonzero_units),
+  p50       = quantile(nonzero_units, 0.50),
+  p90       = quantile(nonzero_units, 0.90),
+  p95       = quantile(nonzero_units, 0.95),
+  p99       = quantile(nonzero_units, 0.99),
+  p99_5     = quantile(nonzero_units, 0.995),
+  p99_9     = quantile(nonzero_units, 0.999),
+  max       = max(nonzero_units)
+)
+
+nonzero_summary
+```
+
+```{r}
+upper_cap <- quantile(nonzero_units, 0.995)
+cat("Cap threshold (p99.5 of non-zero sales):", upper_cap, "\n")
+
+df_clean <- df_clean %>%
+  mutate(
+    is_outlier   = if_else(units > upper_cap, 1, 0),
+    units_capped = pmin(units, upper_cap)
+  )
+
+# How many rows are affected?
+df_clean %>%
+  summarise(
+    n_outliers = sum(is_outlier),
+    pct_outliers = round(mean(is_outlier) * 100, 3)
+  )
+```
+
+```{r}
+df_clean <- df_clean %>%
+  mutate(units_log = log1p(units))
+
+range(df_clean$units_log)
+```
+
+```{r}
+install.packages("patchwork")
+```
+
+```{r}
+library(ggplot2)
+library(patchwork)
+
+# Bin the units for a clearer view (raw histogram is unreadable at 97.4% zeros)
+df_plot <- df_clean %>%
+  mutate(
+    units_bin = case_when(
+      units == 0    ~ "0",
+      units <= 37   ~ "1-37 (≤p99)",
+      units <= 66   ~ "38-66 (p99-p99.5)",
+      TRUE          ~ ">66 (outliers)"
+    ),
+    units_bin = factor(units_bin, levels = c("0","1-37 (≤p99)","38-66 (p99-p99.5)",">66 (outliers)"))
+  )
+
+# Panel 1 — original distribution, log scale to make small bars visible
+p1 <- df_plot %>%
+  count(units_bin) %>%
+  mutate(pct = n / sum(n) * 100) %>%
+  ggplot(aes(x = units_bin, y = pct, fill = units_bin)) +
+  geom_col(show.legend = FALSE) +
+  geom_text(aes(label = paste0(round(pct, 2), "%")), vjust = -0.3, size = 3.2) +
+  scale_y_log10() +
+  scale_fill_manual(values = c("#85B7EB","#378ADD","#185FA5","#D85A30")) +
+  labs(title = "Original units distribution (log scale)", x = NULL, y = "% of rows (log scale)") +
+  theme_minimal()
+
+# Panel 2 — after capping at p99.5
+p2 <- ggplot(df_clean, aes(x = units_capped)) +
+  geom_histogram(binwidth = 2, fill = "#185FA5") +
+  scale_y_log10() +
+  labs(title = paste0("After capping at p99.5 (", upper_cap, ")"), 
+       x = "units_capped", y = "count (log scale)") +
+  theme_minimal()
+
+# Panel 3 — log1p transform
+p3 <- ggplot(df_clean, aes(x = units_log)) +
+  geom_histogram(binwidth = 0.3, fill = "#0C447C") +
+  labs(title = "log1p(units) transform", x = "log1p(units)", y = "count") +
+  theme_minimal()
+
+p1 / p2 / p3
+```
+
+```{r}
+df_clean
+```
+
+```{r}
+df_clean$day <- as.integer(format(df_clean$date, "%u"))
+
+df_clean
+
+```
+
+```{r}
+# Setup and feature selection
+library(dplyr)
+library(rpart)
+library(randomForest)
+library(xgboost)
+library(Metrics)
+library(data.table)
+library(mlbench)
+library(deepnet)
+library(caTools)
+
+set.seed(123)
+
+# Select relevant features + target
+model_data <- df_clean %>%
+  select(units_capped,                       # target (capped at p99.5)
+         store_nbr, item_nbr, 
+         tavg, preciptotal,
+         is_clear, is_rainy, is_snowy, is_foggy, is_stormy, month) #%>% na.omit()
+
+# Train/test split (80/20)
+train_idx <- sample(seq_len(nrow(model_data)), size = 0.8 * nrow(model_data))
+train <- model_data[train_idx, ]
+test  <- model_data[-train_idx, ]
+```
+
+```{r}
+# Linear Regression
+lm_model <- lm(units_capped ~ store_nbr + item_nbr + #tavg + preciptotal  +
+                 #is_clear + is_rainy + is_snowy + is_foggy + is_stormy +
+                 month + day,
+               data = train)
+
+summary(lm_model)
+
+lm_pred <- predict(lm_model, newdata = test)
+```
+
+```{r}
+tree_model <- rpart(units_capped ~ store_nbr + item_nbr + tavg + preciptotal +
+                      is_clear + is_rainy + is_snowy + is_foggy + is_stormy +
+                       month,
+                    data = train, method = "anova")
+
+# Visualize the tree
+library(rpart.plot)
+rpart.plot(tree_model, main = "Decision Tree for Units Sold")
+
+tree_pred <- predict(tree_model, newdata = test)
+```
+
+
+```{r}
+#Logistic model
+
+logistic_model <- glm(units_capped ~ store_nbr + item_nbr + tavg + preciptotal +
+                        is_clear + is_rainy + is_snowy + is_foggy + is_stromy +
+                        month)
+
+
+
+```
+
+
 
 ```{r}
 
 ```
 
+
 ```{r}
 
 ```
@@ -219,3 +388,69 @@ df_clean
 
 
 
+
+
+
+
+```{r}
+# rf_model <- randomForest(units_capped ~ store_nbr + item_nbr + tavg + preciptotal +
+#                            is_clear + is_rainy + is_snowy + is_foggy + is_stormy +
+#                             month,
+#                          data = train, ntree = 100, importance = TRUE)
+# 
+# rf_pred <- predict(rf_model, newdata = test)
+# 
+# # Feature importance
+# importance(rf_model)
+varImpPlot(rf_model)
+```
+
+```{r}
+# # XGBoost requires a matrix, not a formula
+# feature_cols <- c("store_nbr","item_nbr","tavg","preciptotal",
+#                    "is_clear","is_rainy","is_snowy","is_foggy","is_stormy","month")
+# 
+# train_matrix <- as.matrix(train[, feature_cols])
+# test_matrix  <- as.matrix(test[, feature_cols])
+# 
+# dtrain <- xgb.DMatrix(data = train_matrix, label = train$units_capped)
+# dtest  <- xgb.DMatrix(data = test_matrix, label = test$units_capped)
+# 
+# xgb_model <- xgboost(
+#   x       = dtrain,
+#   nrounds    = 100,
+#   max_depth  = 6,
+#   learning_rate = 0.01,
+#   objective  = "reg:squarederror"
+#   #verbose    = 0
+# )
+# 
+# xgb_pred <- predict(xgb_model, dtest)
+# 
+# # Feature importance
+# xgb.importance(model = xgb_model)
+```
+
+```{r}
+results <- data.frame(
+  Model = c("Linear Regression", "Decision Tree"), #"Random Forest", "XGBoost"),
+  RMSE  = c(rmse(test$units_capped, lm_pred),
+            rmse(test$units_capped, tree_pred)),
+            #rmse(test$units_capped, rf_pred),
+            #rmse(test$units_capped, xgb_pred)),
+  MAE   = c(mae(test$units_capped, lm_pred),
+            mae(test$units_capped, tree_pred)),
+            #mae(test$units_capped, rf_pred),
+           # mae(test$units_capped, xgb_pred)),
+  R2    = c(cor(test$units_capped, lm_pred)^2,
+            cor(test$units_capped, tree_pred)^2)
+            #cor(test$units_capped, rf_pred)^2,
+            #cor(test$units_capped, xgb_pred)^2)
+)
+
+results
+```
+
+```{r}
+
+```
