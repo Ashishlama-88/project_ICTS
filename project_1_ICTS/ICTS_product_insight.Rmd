@@ -598,7 +598,7 @@ train_r2_5 <- summary(lm_model_5)$r.squared
 Displaying the coefficient of product 5.
 
 ```{r error=TRUE}
-coef(lm_model_5)
+round(coef(lm_model_5), 3)
 ```
 
 Displaying the error rate for product 5.
@@ -640,7 +640,7 @@ train_r2_9 <- summary(lm_model_9)$r.squared
 Displaying the coefficient of product 9.
 
 ```{r error=TRUE}
-coef(lm_model_9)
+round(coef(lm_model_9), 3)
 ```
 
 Displaying the error rate.
@@ -681,7 +681,7 @@ train_r2_45 <- summary(lm_model_45)$r.squared
 Displaying the coefficient of product 45.
 
 ```{r error=TRUE}
-coef(lm_model_45)
+round(coef(lm_model_45), 3)
 ```
 
 Displaying the error rate.
@@ -690,7 +690,7 @@ Displaying the error rate.
 
 tibble(
   metric = c("Training R2","Validation RMSE", "Testing RMSE", "Testing MAE"),
-  value  = c(train_r2_45,val_rmse_45, test_rmse_45, test_mae_45)
+  value  = round(c(train_r2_45,val_rmse_45, test_rmse_45, test_mae_45), 3)
 )
 
 ```
@@ -747,6 +747,13 @@ tibble(
 rpart.plot(dt_model_5, main = "Pruned Decision Tree Regression")
 
 ```
+
+
+```{r}
+round(dt_model_5$variable.importance, 3)
+```
+
+
 Visualization of the importance on the Model 5.
 ```{r}
 barplot(dt_model_5$variable.importance,
@@ -813,9 +820,9 @@ rpart.plot(dt_model_9, main = "Pruned Decision Tree Regression")
 
 
 ```{r}
-# Visualize pruned tree
-rpart.plot(dt_model_9, main = "Pruned Decision Tree Regression")
+round(dt_model_9$variable.importance, 3)
 ```
+
 
 Visualization of the importance on the Model 5.
 ```{r}
@@ -880,7 +887,7 @@ rpart.plot(dt_model_45, main = "Pruned Decision Tree Regression")
 
 looking for the importance of the features used for the prediction model 45.
 ```{r}
-round(dt_model_45$variable.importance,2)
+round(dt_model_45$variable.importance, 3)
 ```
 
 
