@@ -72,6 +72,7 @@ df <- dbGetQuery(con, "
 ```
 
 
+checking the dataframe
 
 ```{r}
 df
@@ -170,7 +171,7 @@ df_clean$month <- as.integer((format(df_clean$date, "%m")))
 ```
 
 
-creating the 
+creating the weekends and weekdays, weekdays has monday,tuesday,wednesday,thrusday,friday and weekend has saturday and sunday.
 
 ```{r error=TRUE}
 
@@ -183,10 +184,6 @@ df_clean <- df_clean %>%
 ```
 
 
-```{r}
-df_clean
-```
-
 Black entries in the codesum variables are replaced with the 'moderate'.
 
 ```{r}
@@ -194,6 +191,7 @@ df_clean <- df_clean %>%
   mutate(codesum = ifelse(codesum == "" | codesum == " ", "Moderate", codesum))
 ```
 
+vewing the dataframe.
 
 ```{r}
 df_clean
@@ -216,7 +214,7 @@ df_clean <- df_clean %>%
 
 ```
 
-
+viewing the dataframe
 ```{r}
 df_clean
 ```
@@ -239,17 +237,24 @@ df_top3 <- df_clean %>%
 
 ```
 
+
+viewing the df_top3 dataframe
+
 ```{r}
 df_top3
 ```
 
 ## Visualisation
 
+quantriles shows the average temperature.
+
 ```{r}
 tavg_iqr <- quantile(df_top3$tavg)
 tavg_iqr
 ```
 
+
+box plot shows the Temperature Distribution(tavg)
 ```{r error=TRUE}
 boxplot(df_top3$tavg,
         main = "Temperature Distribution (Tavg)",
@@ -257,27 +262,18 @@ boxplot(df_top3$tavg,
         col = "Skyblue")
 ```
 
-
+Average Temperature vs the frequency.
 ```{r error=TRUE}
 hist(df_top3$tavg,
-     main = "Histogram of tavg",
+     main = "Histogram of Average Temperature",
      xlab = "Average Temperature",
+     ylab = "Frequency",
      col = "lightgreen",
      border = "white")
 
 ```
 
-
-
-```{r}
-plot(density(df_top3$tavg),
-     main = "Density Plot of tavg",
-     xlab = "Average Temperature",
-     col = "red",
-     lwd = 2)
-
-```
-
+Average temperature vs unit_solds.
 
 ```{r error=TRUE}
 
@@ -307,24 +303,8 @@ monthly_data <- df_top3 %>%
 
 ```
 
-```{r}
-ggplot(monthly_data, aes(x = month, y = units)) + 
-  geom_col(fill = "#378ADD", width = 0.7) +
-  geom_text(aes(label = scales::comma(units)),
-            vjust = -0.5, size = 3.5) +
-  scale_y_continuous(labels = scales::comma) +
-  labs(
-    title    = "Total units sold by month",
-    x        =  "Months Name",
-    y        = "Total units sold",
-    fill     = NULL
-  ) +
-  theme_minimal(base_size = 12) +
-  theme(
-    panel.grid.major.x = element_blank(),
-    legend.position    = "top"
-  )
-```
+
+Monthly top3 item unit sold.
 
 ```{r}
 
@@ -348,29 +328,8 @@ monthly_item_data <- df_top3_items %>%
 print(monthly_item_data)
 
 ```
-```{r}
-# Option 3: Stacked Bar Chart (shows total with item breakdown)
-ggplot(monthly_item_data, aes(x = month, y = units, fill = item_nbr)) + 
-  geom_col(position = "stack", width = 0.7) +
-  geom_text(aes(label = scales::comma(units)),
-            position = position_stack(vjust = 0.5),
-            size = 3) +
-  scale_y_continuous(labels = scales::comma) +
-  scale_fill_manual(values = c("#378ADD", "#E74C3C", "#2ECC71"),
-                    name = "Item Number") +
-  labs(
-    title    = "Total units sold by month for top 3 items",
-    subtitle = "Stacked view showing contribution of each item",
-    x        = NULL,
-    y        = "Total units sold"
-  ) +
-  theme_minimal(base_size = 12) +
-  theme(
-    panel.grid.major.x = element_blank(),
-    legend.position    = "top"
-  )
 
-```
+Visualisation of the monthly sales.
 
 ```{r}
 # Option 4: Line Chart (shows trends clearly)
@@ -394,9 +353,10 @@ ggplot(monthly_item_data, aes(x = month, y = units, color = item_nbr, group = it
   )
 ```
 
+Unit sold by the weather conditions.
 
 ```{r}
-weather_cols <- c("is_clear","is_rainy","is_snowy","is_foggy","is_stormy")
+weather_cols <- c("is_clear","is_rainy","is_snowy","is_foggy","is_stormy","is_weekends", "is_weekdays")
 
 weather_units <- df_top3 %>% pivot_longer(
   cols = all_of(weather_cols),
@@ -408,6 +368,10 @@ weather_units <- df_top3 %>% pivot_longer(
 
 ggplot(weather_units, aes(x = condition, y= total_units)) +
   geom_col(fill = "darkgreen") +
+  geom_text(
+    aes(label = scales::comma(total_units)),
+    vjust = -0.5
+  ) +
   scale_y_continuous(labels = scales::comma) +
   labs(
     title = "Units Sold by Weather Condition",
@@ -418,6 +382,9 @@ ggplot(weather_units, aes(x = condition, y= total_units)) +
              
 
 ```
+
+selecting the correlation features 
+
 ```{r}
 selected_cols <- df_top3 %>% select(
   where(is.numeric)
@@ -607,7 +574,7 @@ Displaying the error rate for product 5.
 
 tibble(
   metric = c("Training R2","Validation RMSE", "Testing RMSE", "Testing MAE"),
-  value  = c(train_r2_5,val_rmse_5, test_rmse_5, test_mae_5)
+  value  = round(c(train_r2_5,val_rmse_5, test_rmse_5, test_mae_5), 3)
 )
 
 ```
@@ -649,7 +616,7 @@ Displaying the error rate.
 
 tibble(
   metric = c("Training R2","Validation RMSE", "Testing RMSE", "Testing MAE"),
-  value  = c(train_r2_9,val_rmse_9, test_rmse_9, test_mae_9)
+  value  = round(c(train_r2_9,val_rmse_9, test_rmse_9, test_mae_9), 3)
 )
 
 ```
@@ -696,7 +663,7 @@ tibble(
 ```
 
 
-
+# Decision Tree Models
 
 ## Decision Tree 5
 
@@ -704,9 +671,9 @@ tibble(
 dt_model_5 <- rpart(
   units_log ~ .,
   data = train_data_5,
-  method = "anova",              # regression tree (units is numeric)
+  method = "anova",   
   control = rpart.control(cp = 0.001, 
-                          minsplit = 20
+                          minsplit = 15
                           )
   )
 ```
@@ -734,8 +701,8 @@ dt_test_mae_5   <- mean(abs(dt_test_preds_5 - test_data_5$units_log))
 Metrics for the decision tree regression model 5.
 ```{r}
 tibble(
-  metric = c("Model Name","Training R2","Validation RMSE", "Testing RMSE", "Testing MAE"),
-  value  = c("dt_model_5",dt_train_r2_5,dt_val_rmse_5, dt_test_rmse_5, dt_test_mae_5)
+  metric = c("Training R2","Validation RMSE", "Testing RMSE", "Testing MAE"),
+  value  = round(c(dt_train_r2_5,dt_val_rmse_5, dt_test_rmse_5, dt_test_mae_5), 3)
 )
 ```
 
@@ -744,7 +711,7 @@ tibble(
 ```{r}
 
 # Visualize pruned tree
-rpart.plot(dt_model_5, main = "Pruned Decision Tree Regression")
+rpart.plot(dt_model_5, main = "Visualization Decision Tree for Model 5 Regression")
 
 ```
 
@@ -757,17 +724,13 @@ round(dt_model_5$variable.importance, 3)
 Visualization of the importance on the Model 5.
 ```{r}
 barplot(dt_model_5$variable.importance,
-        main = "Feature Importance (Decision Tree)",
+        main = "Feature Importance Model 5 (Decision Tree)",
+        ylab = " Feature Numbers",
         las = 2,
         col = "steelblue")
 
 ```
 
-
-```{r error=TRUE}
-# Visualize pruned tree
-rpart.plot(dt_model_5, main = "Pruned Decision Tree Regression")
-```
 
 
 ## Decision Tree 9
@@ -806,15 +769,15 @@ dt_test_mae_9   <- mean(abs(dt_test_preds_9 - test_data_9$units_log))
 Metrics for the Decision Tree Regression model for model 9.
 ```{r}
 tibble(
-  metric = c("Model Name","Training R2","Validation RMSE", "Testing RMSE", "Testing MAE"),
-  value  = c("dt_model_9",dt_train_r2_9,dt_val_rmse_9, dt_test_rmse_9, dt_test_mae_9)
+  metric = c("Training R2","Validation RMSE", "Testing RMSE", "Testing MAE"),
+  value  = round(c(dt_train_r2_9,dt_val_rmse_9, dt_test_rmse_9, dt_test_mae_9), 3)
 )
 ```
 
 Pruning the Tree and Visualize pruned tree
 
 ```{r}
-rpart.plot(dt_model_9, main = "Pruned Decision Tree Regression")
+rpart.plot(dt_model_9, main = "Visualisation Decision Tree for Model 9 Regression")
 
 ```
 
@@ -827,7 +790,8 @@ round(dt_model_9$variable.importance, 3)
 Visualization of the importance on the Model 5.
 ```{r}
 barplot(dt_model_9$variable.importance,
-        main = "Feature Importance (Decision Tree)",
+        main = "Feature Importance  for Model 9 (Decision Tree)",
+        ylab = " Features Number",
         las = 2,
         col = "steelblue")
 
@@ -843,7 +807,7 @@ dt_model_45 <- rpart(
   data = train_data_45,
   method = "anova",              # regression tree (units is numeric)
   control = rpart.control(cp = 0.001, 
-                          minsplit = 20
+                          minsplit = 15
                           )
   )
 ```
@@ -873,16 +837,15 @@ dt_test_mae_45   <- mean(abs(dt_test_preds_45 - test_data_45$units_log))
 Metrics for the Decision Tree Regression model for model 9.
 ```{r}
 tibble(
-  metric = c("Model Name","Training R2","Validation RMSE", "Testing RMSE", "Testing MAE"),
-  value  = c("dt_model_45",dt_train_r2_45,dt_val_rmse_45, dt_test_rmse_45, dt_test_mae_45)
+  metric = c("Training R2","Validation RMSE", "Testing RMSE", "Testing MAE"),
+  value  = round(c(dt_train_r2_45,dt_val_rmse_45, dt_test_rmse_45, dt_test_mae_45), 3)
 )
 ```
 
 
 Pruning the Tree and Visualize pruned tree
 ```{r}
-# Visualize pruned tree
-rpart.plot(dt_model_45, main = "Pruned Decision Tree Regression")
+rpart.plot(dt_model_45, main = "Visualisation Decision Tree Regression for  Model 45")
 ```
 
 looking for the importance of the features used for the prediction model 45.
@@ -892,9 +855,10 @@ round(dt_model_45$variable.importance, 3)
 
 
 Visualization of the importance on the Model 45.
-```{r}
+```{r error=TRUE}
 barplot(dt_model_45$variable.importance,
-        main = "Feature Importance (Decision Tree)",
+        main = "Feature Importance for Model 45 (Decision Tree)",
+        ylab = "Importance Number",
         las = 2,
         col = "steelblue")
 
