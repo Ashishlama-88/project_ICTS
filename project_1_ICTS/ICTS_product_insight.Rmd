@@ -868,44 +868,6 @@ barplot(dt_model_45$variable.importance,
 
 
 
- What's Missing Entirely
- 
-- Written interpretations for each product
-
-- Business recommendations section
-
-- Proper handling of "T" values in weather data
-
-- Justification for outlier approach (especially zero-inflation)
-
-- Proper visuals with clear interpretation
-
-- Identification of top 3 products via SQL
-
-
- Recommendations to Complete the Assignment
- 
-- Add SQL query to find top 3 products (Section 4.1)
-
-- Fix data cleaning for "T" values and outliers
-
-- Add written analysis for each of the 3 products
-
-- Create proper business recommendations
-
-- Add better visualizations with proper titles/labels
-
-- Make code reproducible using relative paths
-
-- Fix the Product 45 model data reference
-
-
-
-
-
-
-
-
 
 
 
