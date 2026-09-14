@@ -1,13 +1,16 @@
 ---
 title: "Product Insight Sales"
 output: html_notebook
+editor_options: 
+  markdown: 
+    wrap: 72
 ---
 
 ```{r}
 #rm(list = ls())
 ```
 
-## libaries used for the project 
+## libaries used for the project
 
 ```{r error=TRUE}
 library(DBI)
@@ -21,10 +24,14 @@ library(caret)
 library(corrplot)
 ```
 
-
 # Connecting to the Database
 
-The dataset is stored in a SQLite database file named **`project1_raw_data.db`**, which is saved in the Desktop folder. The `RSQLite` package is used to establish a connection to the database. Once connected, the `PRAGMA table_info(weather)` query is executed to inspect the structure of the `weather` table, including its column names and data types.
+The dataset is stored in a SQLite database file named
+**`project1_raw_data.db`**, which is saved in the Desktop folder. The
+`RSQLite` package is used to establish a connection to the database.
+Once connected, the `PRAGMA table_info(weather)` query is executed to
+inspect the structure of the `weather` table, including its column names
+and data types.
 
 ```{r error=TRUE}
 con <- dbConnect(
@@ -35,10 +42,14 @@ con <- dbConnect(
 data = dbGetQuery(con, "PRAGMA table_info(weather)") 
 ```
 
-
 # Retrieving and Joining the Data
 
-The following SQL query extracts the required variables by joining the `train`, `key`, and `weather` tables. The `train` table is linked to the `key` table using `store_nbr`, while the `weather` table is joined using both `station_nbr` and `date`. This creates a single dataset containing sales information together with the corresponding weather conditions for each store and date.
+The following SQL query extracts the required variables by joining the
+`train`, `key`, and `weather` tables. The `train` table is linked to the
+`key` table using `store_nbr`, while the `weather` table is joined using
+both `station_nbr` and `date`. This creates a single dataset containing
+sales information together with the corresponding weather conditions for
+each store and date.
 
 ```{r error=TRUE}
 df <- dbGetQuery(con, "
@@ -71,9 +82,6 @@ df <- dbGetQuery(con, "
 
 ```
 
-
-checking the dataframe
-
 ```{r}
 df
 # view(df)
@@ -81,31 +89,32 @@ df
 
 # Closing the Database Connection
 
-After the required data has been extracted, the database connection is closed to release system resources and ensure that the connection is properly terminated.
+After the required data has been extracted, the database connection is
+closed to release system resources and ensure that the connection is
+properly terminated.
 
 ```{r}
 dbDisconnect(con)
 ```
 
-
 # Exploring the dataset
 
-A summary of the dataset is generated to provide descriptive statistics and identify the distribution of each variable
+A summary of the dataset is generated to provide descriptive statistics
+and identify the distribution of each variable
 
 ```{r}
 summary(df)
 ```
 
-
 ```{r}
 sapply(df, class)
 ```
+
 ## DATA WANGLING
 
 ```{r}
 df_clean <- df
 ```
-
 
 ```{r}
 # creating the columns names under 'var'.
@@ -113,8 +122,9 @@ var <- c("tavg", "preciptotal", "tmax", "tmin", "dewpoint", "wetbulb", "heat", "
 
 ```
 
-we can see there are a lot of the NA's in the provided columns on var. we see if the there are NA and see the whitespacesand convert it into NA on the columns.
-After that we replace the NA into the mean value.  
+we can see there are a lot of the NA's in the provided columns on var.
+we see if the there are NA and see the whitespacesand convert it into NA
+on the columns. After that we replace the NA into the mean value.
 
 ```{r}
 mean_val <- colMeans(df_clean[, var], na.rm = TRUE)
@@ -131,7 +141,8 @@ for (i in var){
 ```
 
 We can see that there are no NA in the provided columns.
-```{r}
+
+```{r }
 summary(df_clean)
 ```
 
@@ -141,7 +152,8 @@ checking the class of the columns.
 sapply(df_clean,class)
 ```
 
-we can see the date is on the character we are going to change the class into Date.
+we can see the date is on the character we are going to change the class
+into Date.
 
 ```{r error=TRUE}
 
@@ -150,13 +162,11 @@ df_clean$date <- as.Date(df_clean$date, format = '%Y-%m-%d')
 
 ```
 
-
 checking the class of the columns.
 
 ```{r error=TRUE}
 sapply(df_clean,class)
 ```
-
 
 From date we will be creating two features to do analysis.
 
@@ -170,8 +180,7 @@ df_clean$month <- as.integer((format(df_clean$date, "%m")))
 
 ```
 
-
-creating the weekends and weekdays, weekdays has monday,tuesday,wednesday,thrusday,friday and weekend has saturday and sunday.
+creating the
 
 ```{r error=TRUE}
 
@@ -183,26 +192,28 @@ df_clean <- df_clean %>%
 
 ```
 
+```{r error=TRUE}
+df_clean
+```
 
 Black entries in the codesum variables are replaced with the 'moderate'.
 
-```{r}
+```{r error=TRUE}
 df_clean <- df_clean %>% 
   mutate(codesum = ifelse(codesum == "" | codesum == " ", "Moderate", codesum))
 ```
 
-vewing the dataframe.
-
-```{r}
+```{r error=TRUE}
 df_clean
 ```
 
 Creating Weather Indicator Variables
 
-The 'codesum' variable is transform into binary indicators for the several weather conditions.
-if the weather condition is presennt it will contain 1 else 0.
+The 'codesum' variable is transform into binary indicators for the
+several weather conditions. if the weather condition is present it will
+contain 1 else 0.
 
-```{r}
+```{r error=TRUE}
 df_clean <- df_clean %>%
   mutate(
     is_clear  = as.integer(grepl("Moderate", codesum)),
@@ -214,19 +225,15 @@ df_clean <- df_clean %>%
 
 ```
 
-viewing the dataframe
-```{r}
+```{r error=TRUE}
 df_clean
 ```
 
-
-
-
-
 ## Filtering Data for the Top Three Items
 
-The datasets is filtered to retain only observations corresponding to the three
-highest-selling items. This subset is used for more focused analysis.
+The datasets is filtered to retain only observations corresponding to
+the three highest-selling items. This subset is used for more focused
+analysis.
 
 ```{r error=TRUE}
 
@@ -237,24 +244,17 @@ df_top3 <- df_clean %>%
 
 ```
 
-
-viewing the df_top3 dataframe
-
-```{r}
+```{r error=TRUE}
 df_top3
 ```
 
 ## Visualisation
 
-quantriles shows the average temperature.
-
-```{r}
+```{r error=TRUE}
 tavg_iqr <- quantile(df_top3$tavg)
 tavg_iqr
 ```
 
-
-box plot shows the Temperature Distribution(tavg)
 ```{r error=TRUE}
 boxplot(df_top3$tavg,
         main = "Temperature Distribution (Tavg)",
@@ -262,18 +262,23 @@ boxplot(df_top3$tavg,
         col = "Skyblue")
 ```
 
-Average Temperature vs the frequency.
 ```{r error=TRUE}
 hist(df_top3$tavg,
-     main = "Histogram of Average Temperature",
+     main = "Histogram of tavg",
      xlab = "Average Temperature",
-     ylab = "Frequency",
      col = "lightgreen",
      border = "white")
 
 ```
 
-Average temperature vs unit_solds.
+```{r}
+plot(density(df_top3$tavg),
+     main = "Density Plot of tavg",
+     xlab = "Average Temperature",
+     col = "red",
+     lwd = 2)
+
+```
 
 ```{r error=TRUE}
 
@@ -291,7 +296,9 @@ ggplot(df_top3, aes(x = tavg, y = mean(units))) +
 
 Visualisation of the Month vs Sales
 
-First, aggregate units by month and then Convert month to factor with proper order (1 = Jan, 12 = Dec). and plot the graph.
+First, aggregate units by month and then Convert month to factor with
+proper order (1 = Jan, 12 = Dec). and plot the graph.
+
 ```{r error=TRUE}
 
 monthly_data <- df_top3 %>%
@@ -303,11 +310,26 @@ monthly_data <- df_top3 %>%
 
 ```
 
+```{r error=TRUE}
+ggplot(monthly_data, aes(x = month, y = units)) + 
+  geom_col(fill = "#378ADD", width = 0.7) +
+  geom_text(aes(label = scales::comma(units)),
+            vjust = -0.5, size = 3.5) +
+  scale_y_continuous(labels = scales::comma) +
+  labs(
+    title    = "Total units sold by month",
+    x        =  "Months Name",
+    y        = "Total units sold",
+    fill     = NULL
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    panel.grid.major.x = element_blank(),
+    legend.position    = "top"
+  )
+```
 
-Monthly top3 item unit sold.
-
-```{r}
-
+```{r error=TRUE}
 
 # Filter for top 3 items
 df_top3_items <- df %>%
@@ -329,9 +351,31 @@ print(monthly_item_data)
 
 ```
 
-Visualisation of the monthly sales.
-
 ```{r}
+# Option 3: Stacked Bar Chart (shows total with item breakdown)
+ggplot(monthly_item_data, aes(x = month, y = units, fill = item_nbr)) + 
+  geom_col(position = "stack", width = 0.7) +
+  geom_text(aes(label = scales::comma(units)),
+            position = position_stack(vjust = 0.5),
+            size = 3) +
+  scale_y_continuous(labels = scales::comma) +
+  scale_fill_manual(values = c("#378ADD", "#E74C3C", "#2ECC71"),
+                    name = "Item Number") +
+  labs(
+    title    = "Total units sold by month for top 3 items",
+    subtitle = "Stacked view showing contribution of each item",
+    x        = NULL,
+    y        = "Total units sold"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    panel.grid.major.x = element_blank(),
+    legend.position    = "top"
+  )
+
+```
+
+```{r error=TRUE}
 # Option 4: Line Chart (shows trends clearly)
 ggplot(monthly_item_data, aes(x = month, y = units, color = item_nbr, group = item_nbr)) + 
   geom_line(size = 1) +
@@ -353,10 +397,8 @@ ggplot(monthly_item_data, aes(x = month, y = units, color = item_nbr, group = it
   )
 ```
 
-Unit sold by the weather conditions.
-
-```{r}
-weather_cols <- c("is_clear","is_rainy","is_snowy","is_foggy","is_stormy","is_weekends", "is_weekdays")
+```{r error=TRUE}
+weather_cols <- c("is_clear","is_rainy","is_snowy","is_foggy","is_stormy")
 
 weather_units <- df_top3 %>% pivot_longer(
   cols = all_of(weather_cols),
@@ -368,10 +410,6 @@ weather_units <- df_top3 %>% pivot_longer(
 
 ggplot(weather_units, aes(x = condition, y= total_units)) +
   geom_col(fill = "darkgreen") +
-  geom_text(
-    aes(label = scales::comma(total_units)),
-    vjust = -0.5
-  ) +
   scale_y_continuous(labels = scales::comma) +
   labs(
     title = "Units Sold by Weather Condition",
@@ -383,38 +421,35 @@ ggplot(weather_units, aes(x = condition, y= total_units)) +
 
 ```
 
-selecting the correlation features 
-
-```{r}
+```{r error=TRUE}
 selected_cols <- df_top3 %>% select(
   where(is.numeric)
-)# %>% 
+)
+
+# %>%  # trting to see how it looks with the selected features.
   # select(
   #   -c(is_weekends, is_weekdays, is_clear, is_rainy, is_snowy, is_foggy, is_stormy)
   # )
 
 ```
 
-
-```{r}
+```{r error=TRUE}
 correlation <- cor(selected_cols, use = "complete.obs", method = "pearson")
 
 # print(round(correlation, 2))
 ```
 
-
-```{r}
+```{r error=TRUE}
 corrplot(correlation, method = "color", type = "full",
          tl.cex = 0.7, number.cex = 0.6, addCoef.col = "black")
 ```
 
-
 ## Exploring the Distribution of Sales
 
-Summary statistics are calculated for the "units" variable to understand its 
-distribution. Theses includes the minimum, maximum, mean, median, percentage of 
-zero sales, and selected percentile values, which help identify skewness and
-potential outliers.
+Summary statistics are calculated for the "units" variable to understand
+its distribution. Theses includes the minimum, maximum, mean, median,
+percentage of zero sales, and selected percentile values, which help
+identify skewness and potential outliers.
 
 ```{r error=TRUE}
 df_top3 %>%
@@ -431,20 +466,18 @@ df_top3 %>%
 
 ```
 
-
 ```{r}
 # write.csv(df_clean, "product_insights.csv", row.names = FALSE)
 
 ```
 
-
 ## Data Preparation
 
 Applying a Log Transformation
 
-A logarithmic transformation ("log1p") is applied to the sales variable to reduce
-the effects of skewness and make the distribution more suitable for statistical
-modelling.
+A logarithmic transformation ("log1p") is applied to the sales variable
+to reduce the effects of skewness and make the distribution more
+suitable for statistical modelling.
 
 ```{r error=TRUE}
 df_top3 <- df_top3 %>%
@@ -452,42 +485,42 @@ df_top3 <- df_top3 %>%
 
 ```
 
+\# Feature Selections
 
-
- # Feature Selections
 ```{r error=TRUE}
 features <-  c("tavg","is_clear","is_rainy","is_snowy","is_foggy","is_stormy","is_weekends", "is_weekdays")
 ```
-
 
 ## Train, Validation and Test the model
 
 Making the data ready for to fit the model. Each product number are set.
 
+One of the top 3 item, item number 5 is filtered
 
-One of the top 3 item, item number 5 is filtered 
 ```{r error=TRUE}
 item_data_5 <- df_top3 %>% 
   filter(item_nbr == 5) %>% 
   select(units_log, all_of(features)) %>% na.omit()
 ```
 
+One of the top 3 item, item number 9 is filtered
 
-One of the top 3 item, item number 9 is filtered 
 ```{r error=TRUE}
 item_data_9 <- df_top3 %>% 
   filter(item_nbr == 9) %>%
   select(units_log, all_of(features)) %>% na.omit()
 ```
 
-One of the top 3 item, item number 5 is filtered 
+One of the top 3 item, item number 5 is filtered
+
 ```{r error=TRUE}
 item_data_45 <- df_top3 %>% 
   filter(item_nbr == 45) %>%
   select(units_log, all_of(features)) %>% na.omit()
 ```
 
-In this section, number of rows for top 3 items model number of rows and different indices are created.
+In this section, number of rows for top 3 items model number of rows and
+different indices are created.
 
 ```{r error=TRUE}
 set.seed(42)
@@ -501,8 +534,8 @@ index_9 <- sample(seq(n9))
 index_45 <- sample(seq(n45))
 ```
 
-
 Creating the split for the product no 5
+
 ```{r error=TRUE}
 # Create Train/ Validation /Test Split
 train_5 <- floor(0.8 * n5)
@@ -514,6 +547,7 @@ test_data_5  <- item_data_5[index_5[(val_5 + 1):n5], ]
 ```
 
 Creating the split for the product no 9
+
 ```{r error=TRUE}
 # Create Train/ Validation /Test Split
 train_9 <- floor(0.8 * n9)
@@ -525,6 +559,7 @@ test_data_9  <- item_data_9[index_9[(val_9 + 1):n9], ]
 ```
 
 Creating the split for the product no 45
+
 ```{r error=TRUE}
 # Create Train/ Validation /Test Split
 train_45 <- floor(0.8 * n45)
@@ -535,8 +570,6 @@ val_data_45   <- item_data_45[index_45[(train_45 + 1):val_45], ]
 test_data_45  <- item_data_45[index_45[(val_45 + 1):n45], ]
 ```
 
-
-
 ## Fitting the linear regression model for product 5
 
 ```{r error=TRUE}
@@ -544,16 +577,20 @@ lm_model_5 <- lm(units_log ~ ., data = train_data_5)
 
 ```
 
-Validation test and metric to measure for Linear Regression for Product 5.
-```{r}
+Validation test and metric to measure for Linear Regression for Product
+5.
+
+```{r error=TRUE}
 # Validation performance
 val_preds_5 <- predict(lm_model_5, newdata = val_data_5)
 val_rmse_5 <- sqrt(mean((val_preds_5 - val_data_5$units_log)^2))
 
 ```
 
-Testing the model and the metric is used, also train metric for the measurement for Product 5.
-```{r}
+Testing the model and the metric is used, also train metric for the
+measurement for Product 5.
+
+```{r error=TRUE}
 # Final test performance
 test_preds_5 <- predict(lm_model_5, newdata = test_data_5)
 test_rmse_5 <- sqrt(mean((test_preds_5 - test_data_5$units_log)^2))
@@ -561,11 +598,10 @@ test_mae_5  <- mean(abs(test_preds_5 - test_data_5$units_log))
 train_r2_5 <- summary(lm_model_5)$r.squared
 ```
 
-
 Displaying the coefficient of product 5.
 
 ```{r error=TRUE}
-round(coef(lm_model_5), 3)
+coef(lm_model_5)
 ```
 
 Displaying the error rate for product 5.
@@ -574,28 +610,31 @@ Displaying the error rate for product 5.
 
 tibble(
   metric = c("Training R2","Validation RMSE", "Testing RMSE", "Testing MAE"),
-  value  = round(c(train_r2_5,val_rmse_5, test_rmse_5, test_mae_5), 3)
+  value  = c(train_r2_5,val_rmse_5, test_rmse_5, test_mae_5)
 )
 
 ```
 
-
-
 Fitting the Linear Regression Model for Product 9
+
 ```{r error=TRUE}
 lm_model_9 <- lm(units_log ~ ., data = train_data_9)
 
 ```
 
-Validation test and metric to measure for Linear Regression for Product 9.
-```{r}
+Validation test and metric to measure for Linear Regression for Product
+9.
+
+```{r error=TRUE}
 # Validation performance
 val_preds_9 <- predict(lm_model_9, newdata = val_data_9)
 val_rmse_9 <- sqrt(mean((val_preds_9 - val_data_9$units_log)^2))
 ```
 
-Testing the model and the metric is used, also train metric for the measurement for Product 9.
-```{r}
+Testing the model and the metric is used, also train metric for the
+measurement for Product 9.
+
+```{r error=TRUE}
 # Final test performance
 test_preds_9 <- predict(lm_model_9, newdata = test_data_9)
 test_rmse_9 <- sqrt(mean((test_preds_9 - test_data_9$units_log)^2))
@@ -603,11 +642,10 @@ test_mae_9  <- mean(abs(test_preds_9 - test_data_9$units_log))
 train_r2_9 <- summary(lm_model_9)$r.squared
 ```
 
-
 Displaying the coefficient of product 9.
 
 ```{r error=TRUE}
-round(coef(lm_model_9), 3)
+coef(lm_model_9)
 ```
 
 Displaying the error rate.
@@ -616,27 +654,31 @@ Displaying the error rate.
 
 tibble(
   metric = c("Training R2","Validation RMSE", "Testing RMSE", "Testing MAE"),
-  value  = round(c(train_r2_9,val_rmse_9, test_rmse_9, test_mae_9), 3)
+  value  = c(train_r2_9,val_rmse_9, test_rmse_9, test_mae_9)
 )
 
 ```
 
-
 Fitting the Linear Regression Model for Product 45.
+
 ```{r error=TRUE}
 lm_model_45 <- lm(units_log ~ ., data = train_data_45)
 
 ```
 
-Validation test and metric to measure for Linear Regression for Product 45.
-```{r}
+Validation test and metric to measure for Linear Regression for Product
+45.
+
+```{r error=TRUE}
 # Validation performance
 val_preds_45 <- predict(lm_model_45, newdata = val_data_45)
 val_rmse_45 <- sqrt(mean((val_preds_45 - val_data_45$units_log)^2))
 ```
 
-Testing the model and the metric is used, also train metric for the measurement for Product 45.
-```{r}
+Testing the model and the metric is used, also train metric for the
+measurement for Product 45.
+
+```{r error=TRUE}
 # Final test performance
 test_preds_45 <- predict(lm_model_45, newdata = test_data_45)
 test_rmse_45 <- sqrt(mean((test_preds_45 - test_data_45$units_log)^2))
@@ -644,11 +686,10 @@ test_mae_45  <- mean(abs(test_preds_45 - test_data_45$units_log))
 train_r2_45 <- summary(lm_model_45)$r.squared
 ```
 
-
 Displaying the coefficient of product 45.
 
 ```{r error=TRUE}
-round(coef(lm_model_45), 3)
+coef(lm_model_45)
 ```
 
 Displaying the error rate.
@@ -657,13 +698,10 @@ Displaying the error rate.
 
 tibble(
   metric = c("Training R2","Validation RMSE", "Testing RMSE", "Testing MAE"),
-  value  = round(c(train_r2_45,val_rmse_45, test_rmse_45, test_mae_45), 3)
+  value  = c(train_r2_45,val_rmse_45, test_rmse_45, test_mae_45)
 )
 
 ```
-
-
-# Decision Tree Models
 
 ## Decision Tree 5
 
@@ -671,14 +709,16 @@ tibble(
 dt_model_5 <- rpart(
   units_log ~ .,
   data = train_data_5,
-  method = "anova",   
+  method = "anova",              # regression tree (units is numeric)
   control = rpart.control(cp = 0.001, 
-                          minsplit = 15
+                          minsplit = 20
                           )
   )
 ```
 
-The decision trees regression training and validation and measuring training r2 and validation rmse to measure the error for model 5.
+The decision trees regression training and validation and measuring
+training r2 and validation rmse to measure the error for model 5.
+
 ```{r error=TRUE}
 
 dt_train_preds_5 <- predict(dt_model_5, newdata = train_data_5)
@@ -690,7 +730,9 @@ dt_val_rmse_5   <- sqrt(mean((dt_val_preds_5 - val_data_5$units_log)^2))
 
 ```
 
-Running the prediction, test root mean square error(rmse) and mean absolute error(mae) to measure the testing result for model 5.
+Running the prediction, test root mean square error(rmse) and mean
+absolute error(mae) to measure the testing result for model 5.
+
 ```{r error=TRUE}
 dt_test_preds_5 <- predict(dt_model_5, newdata = test_data_5)
 dt_test_rmse_5  <- sqrt(mean((dt_test_preds_5 - test_data_5$units_log)^2))
@@ -699,39 +741,37 @@ dt_test_mae_5   <- mean(abs(dt_test_preds_5 - test_data_5$units_log))
 ```
 
 Metrics for the decision tree regression model 5.
-```{r}
+
+```{r error=TRUE}
 tibble(
-  metric = c("Training R2","Validation RMSE", "Testing RMSE", "Testing MAE"),
-  value  = round(c(dt_train_r2_5,dt_val_rmse_5, dt_test_rmse_5, dt_test_mae_5), 3)
+  metric = c("Model Name","Training R2","Validation RMSE", "Testing RMSE", "Testing MAE"),
+  value  = c("dt_model_5",dt_train_r2_5,dt_val_rmse_5, dt_test_rmse_5, dt_test_mae_5)
 )
 ```
 
 #Pruning the Tree
 
-```{r}
+```{r error=TRUE}
 
 # Visualize pruned tree
-rpart.plot(dt_model_5, main = "Visualization Decision Tree for Model 5 Regression")
+rpart.plot(dt_model_5, main = "Pruned Decision Tree Regression")
 
 ```
-
-
-```{r}
-round(dt_model_5$variable.importance, 3)
-```
-
 
 Visualization of the importance on the Model 5.
-```{r}
+
+```{r error=TRUE}
 barplot(dt_model_5$variable.importance,
-        main = "Feature Importance Model 5 (Decision Tree)",
-        ylab = " Feature Numbers",
+        main = "Feature Importance (Decision Tree)",
         las = 2,
         col = "steelblue")
 
 ```
 
-
+```{r error=TRUE}
+# Visualize pruned tree
+rpart.plot(dt_model_5, main = "Pruned Decision Tree Regression")
+```
 
 ## Decision Tree 9
 
@@ -746,7 +786,9 @@ dt_model_9 <- rpart(
   )
 ```
 
-The decision trees regression training and validation and measuring training r2 and validation rmse to measure the error for model 9.
+The decision trees regression training and validation and measuring
+training r2 and validation rmse to measure the error for model 9.
+
 ```{r error=TRUE}
 
 dt_train_preds_9 <- predict(dt_model_9, newdata = train_data_9)
@@ -758,7 +800,9 @@ dt_val_rmse_9   <- sqrt(mean((dt_val_preds_9 - val_data_9$units_log)^2))
 
 ```
 
-Running the prediction, test root mean square error(rmse) and mean absolute error(mae) to measure the testing result for model 9.
+Running the prediction, test root mean square error(rmse) and mean
+absolute error(mae) to measure the testing result for model 9.
+
 ```{r error=TRUE}
 dt_test_preds_9 <- predict(dt_model_9, newdata = test_data_9)
 dt_test_rmse_9  <- sqrt(mean((dt_test_preds_9 - test_data_9$units_log)^2))
@@ -767,37 +811,35 @@ dt_test_mae_9   <- mean(abs(dt_test_preds_9 - test_data_9$units_log))
 ```
 
 Metrics for the Decision Tree Regression model for model 9.
-```{r}
+
+```{r error=TRUE}
 tibble(
-  metric = c("Training R2","Validation RMSE", "Testing RMSE", "Testing MAE"),
-  value  = round(c(dt_train_r2_9,dt_val_rmse_9, dt_test_rmse_9, dt_test_mae_9), 3)
+  metric = c("Model Name","Training R2","Validation RMSE", "Testing RMSE", "Testing MAE"),
+  value  = c("dt_model_9",dt_train_r2_9,dt_val_rmse_9, dt_test_rmse_9, dt_test_mae_9)
 )
 ```
 
 Pruning the Tree and Visualize pruned tree
 
-```{r}
-rpart.plot(dt_model_9, main = "Visualisation Decision Tree for Model 9 Regression")
+```{r error=TRUE}
+rpart.plot(dt_model_9, main = "Pruned Decision Tree Regression")
 
 ```
 
-
-```{r}
-round(dt_model_9$variable.importance, 3)
+```{r error=TRUE}
+# Visualize pruned tree
+rpart.plot(dt_model_9, main = "Pruned Decision Tree Regression")
 ```
-
 
 Visualization of the importance on the Model 5.
-```{r}
+
+```{r error=TRUE}
 barplot(dt_model_9$variable.importance,
-        main = "Feature Importance  for Model 9 (Decision Tree)",
-        ylab = " Features Number",
+        main = "Feature Importance (Decision Tree)",
         las = 2,
         col = "steelblue")
 
 ```
-
-
 
 ## Decision Tree 45
 
@@ -807,13 +849,14 @@ dt_model_45 <- rpart(
   data = train_data_45,
   method = "anova",              # regression tree (units is numeric)
   control = rpart.control(cp = 0.001, 
-                          minsplit = 15
+                          minsplit = 20
                           )
   )
 ```
 
+The decision trees regression training and validation and measuring
+training r2 and validation rmse to measure the error for model 45.
 
-The decision trees regression training and validation and measuring training r2 and validation rmse to measure the error for model 45.
 ```{r error=TRUE}
 
 dt_train_preds_45 <- predict(dt_model_45, newdata = train_data_45)
@@ -825,8 +868,9 @@ dt_val_rmse_45   <- sqrt(mean((dt_val_preds_45 - val_data_45$units_log)^2))
 
 ```
 
+Running the prediction, test root mean square error(rmse) and mean
+absolute error(mae) to measure the testing result for model 45.
 
-Running the prediction, test root mean square error(rmse) and mean absolute error(mae) to measure the testing result for model 45.
 ```{r error=TRUE}
 dt_test_preds_45 <- predict(dt_model_45, newdata = test_data_45)
 dt_test_rmse_45  <- sqrt(mean((dt_test_preds_45 - test_data_45$units_log)^2))
@@ -835,47 +879,34 @@ dt_test_mae_45   <- mean(abs(dt_test_preds_45 - test_data_45$units_log))
 ```
 
 Metrics for the Decision Tree Regression model for model 9.
-```{r}
+
+```{r error=TRUE}
 tibble(
-  metric = c("Training R2","Validation RMSE", "Testing RMSE", "Testing MAE"),
-  value  = round(c(dt_train_r2_45,dt_val_rmse_45, dt_test_rmse_45, dt_test_mae_45), 3)
+  metric = c("Model Name","Training R2","Validation RMSE", "Testing RMSE", "Testing MAE"),
+  value  = c("dt_model_45",dt_train_r2_45,dt_val_rmse_45, dt_test_rmse_45, dt_test_mae_45)
 )
 ```
 
-
 Pruning the Tree and Visualize pruned tree
-```{r}
-rpart.plot(dt_model_45, main = "Visualisation Decision Tree Regression for  Model 45")
+
+```{r error=TRUE}
+# Visualize pruned tree
+rpart.plot(dt_model_45, main = "Pruned Decision Tree Regression")
 ```
 
-looking for the importance of the features used for the prediction model 45.
-```{r}
-round(dt_model_45$variable.importance, 3)
-```
+looking for the importance of the features used for the prediction model
+45.
 
+```{r error=TRUE}
+round(dt_model_45$variable.importance,2)
+```
 
 Visualization of the importance on the Model 45.
+
 ```{r error=TRUE}
 barplot(dt_model_45$variable.importance,
-        main = "Feature Importance for Model 45 (Decision Tree)",
-        ylab = "Importance Number",
+        main = "Feature Importance (Decision Tree)",
         las = 2,
         col = "steelblue")
 
 ```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
